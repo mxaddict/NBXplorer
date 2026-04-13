@@ -5,16 +5,26 @@ namespace NBXplorer
 {
     public partial class NBXplorerNetworkProvider
     {
+        public class NavioNBXplorerNetwork : NBXplorerNetwork
+        {
+            internal NavioNBXplorerNetwork(INetworkSet networkSet, ChainName networkType) : base(networkSet, networkType)
+            {
+            }
+
+            internal override DerivationStrategyFactory CreateStrategyFactory()
+            {
+                return new BlsctDerivationStrategyFactory(NBitcoinNetwork);
+            }
+        }
+
         private void InitNavio(ChainName networkType)
         {
-            Add(new NBXplorerNetwork(NBitcoin.Altcoins.Navio.Instance, networkType)
+            Add(new NavioNBXplorerNetwork(NBitcoin.Altcoins.Navio.Instance, networkType)
             {
                 MinRPCVersion = 220000,
                 CoinType = networkType == ChainName.Mainnet
                     ? new KeyPath("0'")
                     : new KeyPath("1'"),
-                // Custom strategy parser: recognize "blsct:..." strings
-                DerivationStrategyFactory = new BlsctDerivationStrategyFactory(NBitcoin.Altcoins.Navio.Instance.GetNetwork(networkType)),
             });
         }
 
