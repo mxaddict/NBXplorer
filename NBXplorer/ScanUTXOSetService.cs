@@ -287,6 +287,11 @@ namespace NBXplorer
 
 		private ScannedItems GetScannedItems(ScanUTXOWorkItem workItem, ScanUTXOProgress progress, NBXplorerNetwork network)
 		{
+			// BLSCT outputs are blinded — scantxoutset cannot identify them.
+			// The daemon wallet handles detection via the private view key.
+			if (network.NBitcoinNetwork.NetworkSet is NBitcoin.Altcoins.Navio)
+				return null;
+
 			var items = new ScannedItems();
 			var derivationStrategy = workItem.DerivationStrategy;
 			foreach (var feature in derivationStrategy.GetDerivationFeatures(keyPathTemplates))

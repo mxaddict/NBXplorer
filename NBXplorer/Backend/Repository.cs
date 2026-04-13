@@ -247,6 +247,12 @@ namespace NBXplorer.Backend
 
 		private async Task ImportDescriptorToRPCIfNeeded(DbConnection connection, WalletKey walletKey, long fromIndex, long toGenerate, KeyPathTemplate keyTemplate)
 		{
+			// BLSCT wallets don't use descriptors — the daemon derives
+			// sub-addresses from the BLSCT seed internally via blsct::KeyMan.
+			// importdescriptors would fail (WALLET_FLAG_DESCRIPTORS is cleared).
+			if (rpc.Network.NetworkSet is NBitcoin.Altcoins.Navio)
+				return;
+
 			var helper = new DbConnectionHelper(Network, connection);
 			var importAddressToRPC = ImportRPCMode.Parse(await helper.GetMetadata<string>(walletKey.wid, WellknownMetadataKeys.ImportAddressToRPC));
 			if (importAddressToRPC == ImportRPCMode.Descriptors || importAddressToRPC == ImportRPCMode.DescriptorsReadOnly)

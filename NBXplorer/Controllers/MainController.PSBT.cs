@@ -28,6 +28,10 @@ namespace NBXplorer.Controllers
 			if (body == null)
 				throw new ArgumentNullException(nameof(body));
 			var network = trackedSourceContext.Network;
+			// BLSCT does not support PSBT. Use sendtoblsctaddress (remapped from sendtoaddress) directly.
+			if (network.NBitcoinNetwork.NetworkSet is NBitcoin.Altcoins.Navio)
+				throw new NBXplorerException(new NBXplorerError(400, "psbt-not-supported",
+					"PSBT is not supported for Navio BLSCT transactions. Use the direct send API instead."));
 			CreatePSBTRequest request = network.ParseJObject<CreatePSBTRequest>(body);
 
 			var psbtVersion = request.PSBTVersion switch
