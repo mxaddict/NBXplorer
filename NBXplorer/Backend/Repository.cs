@@ -19,7 +19,6 @@ using Npgsql;
 using static NBXplorer.Backend.DbConnectionHelper;
 using NBitcoin.DataEncoders;
 using NBitcoin.WalletPolicies;
-using NavioBlsct;
 using Derivation = NBXplorer.DerivationStrategy.Derivation;
 
 
@@ -175,7 +174,7 @@ namespace NBXplorer.Backend
 		internal async Task<int> GenerateAddressesCore(DbConnection connection, DerivationStrategyBase strategy, DerivationLine derivationLine, GenerateAddressQuery query)
 		{
 			// BLSCT path: derive addresses from (viewKey, spendKey) instead of BIP32
-			if (strategy is NBitcoin.Altcoins.BlsctDerivationStrategy blsct)
+			if (strategy is BlsctDerivationStrategy blsct)
 			{
 				return await GenerateBlsctAddressesCore(
 					connection, blsct, derivationLine.Feature, query);
@@ -255,7 +254,7 @@ namespace NBXplorer.Backend
 
 		private async Task<int> GenerateBlsctAddressesCore(
 			DbConnection connection,
-			NBitcoin.Altcoins.BlsctDerivationStrategy strategy,
+			BlsctDerivationStrategy strategy,
 			DerivationFeature feature,
 			GenerateAddressQuery query)
 		{
@@ -304,7 +303,7 @@ namespace NBXplorer.Backend
 
 			// Map DerivationFeature to BLSCT account index
 			long account = feature == DerivationFeature.Change
-				? NBitcoin.Altcoins.BlsctDerivationStrategy.ChangeAccount   // -1
+				? BlsctDerivationStrategy.ChangeAccount   // -1
 				: 0; // receive
 
 			do
@@ -315,12 +314,14 @@ namespace NBXplorer.Backend
 				// Derive BLSCT addresses for indices [nextIndex, nextIndex + toGenerate)
 				for (long i = 0; i < toGenerate; i++)
 				{
-					var addrStr = NBitcoin.Altcoins.BlsctAddressDeriver.Derive(
+					// Use the native libblsct to derive BLSCT addresses
+					// Call gen_sub_addr_id -> derive_sub_address -> encode_address
+					var addrStr = BlsctDerivationStrategy.DeriveBlsctAddress(
 						strategy.ViewKey,
 						strategy.SpendKey,
 						account,
 						(ulong)(nextIndex + i),
-						NavioBlsct.AddressEncoding.Bech32M);
+						hrp);
 					var addr = BitcoinAddress.Create(addrStr, Network.NBitcoinNetwork);
 					inserts[i] = new DescriptorScriptInsert(
 						descriptorKey.descriptor,

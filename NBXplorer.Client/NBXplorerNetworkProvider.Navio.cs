@@ -1,4 +1,5 @@
 using NBitcoin;
+using NBXplorer.DerivationStrategy;
 
 namespace NBXplorer
 {
@@ -13,7 +14,7 @@ namespace NBXplorer
                     ? new KeyPath("0'")
                     : new KeyPath("1'"),
                 // Custom strategy parser: recognize "blsct:..." strings
-                DerivationStrategyFactory = new NBitcoin.Altcoins.BlsctDerivationStrategyFactory(),
+                DerivationStrategyFactory = new BlsctDerivationStrategyFactory(NBitcoin.Altcoins.Navio.Instance.GetNetwork(networkType)),
             });
         }
 
