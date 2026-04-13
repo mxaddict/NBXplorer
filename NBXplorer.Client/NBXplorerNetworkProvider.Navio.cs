@@ -12,6 +12,8 @@ namespace NBXplorer
                 CoinType = networkType == ChainName.Mainnet
                     ? new KeyPath("0'")
                     : new KeyPath("1'"),
+                // Custom strategy parser: recognize "blsct:..." strings
+                DerivationStrategyFactory = new NBitcoin.Altcoins.BlsctDerivationStrategyFactory(),
             });
         }
 
