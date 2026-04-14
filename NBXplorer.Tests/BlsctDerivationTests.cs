@@ -1,0 +1,75 @@
+using System;
+using NBXplorer.DerivationStrategy;
+using Xunit;
+
+namespace NBXplorer.Tests
+{
+    public class BlsctDerivationTests
+    {
+        static readonly byte[] TestViewKey = new byte[32];
+        static readonly byte[] TestSpendKey = new byte[48];
+
+        private static bool HasLibblsct => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LIBBLSCT_SO_PATH"));
+
+        [Fact]
+        public void DeriveBlsctAddressWithTnvHrpStartsWithPrefix()
+        {
+            if (!HasLibblsct) return;
+
+            var address = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            Assert.StartsWith("tnv1", address);
+        }
+
+        // NOTE: DeriveBlsctAddress accepts an `hrp` parameter but the underlying
+        // C encode_address(BlsctSubAddr*, AddressEncoding) does not take an HRP argument.
+        // The native library encodes with a fixed HRP baked into the sub-address structure.
+        // HRP switching (nav vs tnv) is a TODO in BlsctDerivationStrategy.
+        // A "nav1" prefix test is omitted until the hrp param is wired through.
+
+        [Fact]
+        public void DeriveBlsctAddressIsDeterministic()
+        {
+            if (!HasLibblsct) return;
+
+            var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            Assert.Equal(address1, address2);
+        }
+
+        [Fact]
+        public void DeriveBlsctAddressDifferentAccountProducesDifferentAddress()
+        {
+            if (!HasLibblsct) return;
+
+            var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 1, 0, "tnv");
+            Assert.NotEqual(address1, address2);
+        }
+
+        [Fact]
+        public void DeriveBlsctAddressDifferentIndexProducesDifferentAddress()
+        {
+            if (!HasLibblsct) return;
+
+            var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 1, "tnv");
+            Assert.NotEqual(address1, address2);
+        }
+
+        [Fact]
+        public void DeriveBlsctAddressChangeAccountProducesDifferentAddress()
+        {
+            if (!HasLibblsct) return;
+
+            var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
+            var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, BlsctDerivationStrategy.ChangeAccount, 0, "tnv");
+            Assert.NotEqual(address1, address2);
+        }
+
+        [Fact]
+        public void ChangeAccountConstantIsNegativeOne()
+        {
+            Assert.Equal(-1L, BlsctDerivationStrategy.ChangeAccount);
+        }
+    }
+}
