@@ -71,5 +71,14 @@ namespace NBXplorer.Tests
         {
             Assert.Equal(-1L, BlsctDerivationStrategy.ChangeAccount);
         }
+
+        [Fact(Skip = "fixture not yet generated")]
+        public void DeriveBlsctAddress_MatchesFixture()
+        {
+            // Test vectors are loaded from blsct_vectors.json (not yet generated).
+            // Once libblsct.so builds and the fixture generator runs, this test will
+            // verify that DeriveBlsctAddress produces the expected addresses.
+            // See BTCPAY.md "Test Vectors" section for fixture generation steps.
+        }
     }
 }

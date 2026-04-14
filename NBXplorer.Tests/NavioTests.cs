@@ -152,5 +152,20 @@ namespace NBXplorer.Tests
             var expectedCoinType = new NBitcoin.KeyPath("0'");
             Assert.Equal(expectedCoinType, navNetwork.CoinType);
         }
+
+        [Fact]
+        public void BlsctDerivationStrategyFactory_Parse_NonBlsctString_FallsBackToBase()
+        {
+            var network = NBitcoin.Altcoins.AltNetworkSets.Navio.Testnet;
+            var factory = new BlsctDerivationStrategyFactory(network);
+
+            // Generate a valid HD pubkey in testnet format so the base class can parse it.
+            // This confirms the factory falls back correctly for non-BLSCT inputs.
+            var xpub = new NBitcoin.ExtKey().Neuter().ToString(network);
+            var result = factory.Parse(xpub);
+
+            Assert.NotNull(result);
+            Assert.False(result is BlsctDerivationStrategy);
+        }
     }
 }
