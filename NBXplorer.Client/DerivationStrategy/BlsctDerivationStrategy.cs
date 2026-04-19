@@ -52,16 +52,17 @@ namespace NBXplorer.DerivationStrategy
 
         public static BlsctDerivationStrategy Parse(string s)
         {
+            if (s is null) return null;
             if (!s.StartsWith(Prefix, StringComparison.OrdinalIgnoreCase)) return null;
             var parts = s.Substring(Prefix.Length).Split(':');
             if (parts.Length != 2 || parts[0].Length != 64 || parts[1].Length != 96) return null;
             try
             {
-                return new BlsctDerivationStrategy(
-                    Encoders.Hex.DecodeData(parts[0]),
-                    Encoders.Hex.DecodeData(parts[1]));
+                var viewKey  = Encoders.Hex.DecodeData(parts[0]);
+                var spendKey = Encoders.Hex.DecodeData(parts[1]);
+                return new BlsctDerivationStrategy(viewKey, spendKey);
             }
-            catch
+            catch (FormatException)
             {
                 return null;
             }
