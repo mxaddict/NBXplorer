@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using NBitcoin.DataEncoders;
 using NBXplorer.DerivationStrategy;
 using Xunit;
@@ -89,13 +91,26 @@ namespace NBXplorer.Tests
             Assert.Equal(-1L, BlsctDerivationStrategy.ChangeAccount);
         }
 
-        [Fact(Skip = "fixture not yet generated")]
+        [Fact]
         public void DeriveBlsctAddress_MatchesFixture()
         {
-            // Test vectors are loaded from blsct_vectors.json (not yet generated).
-            // Once libblsct.so builds and the fixture generator runs, this test will
-            // verify that DeriveBlsctAddress produces the expected addresses.
-            // See BTCPAY.md "Test Vectors" section for fixture generation steps.
+            if (!HasLibblsct) return;
+
+            var fixturePath = Path.Combine(AppContext.BaseDirectory, "Data", "blsct_vectors.json");
+            var doc = JsonDocument.Parse(File.ReadAllText(fixturePath));
+            var viewKey  = Encoders.Hex.DecodeData(doc.RootElement.GetProperty("view_key").GetString());
+            var spendKey = Encoders.Hex.DecodeData(doc.RootElement.GetProperty("spend_key").GetString());
+
+            foreach (var v in doc.RootElement.GetProperty("vectors").EnumerateArray())
+            {
+                var account  = v.GetProperty("account").GetInt64();
+                var index    = (ulong)v.GetProperty("index").GetInt64();
+                var hrp      = v.GetProperty("hrp").GetString();
+                var expected = v.GetProperty("address").GetString();
+
+                var actual = BlsctDerivationStrategy.DeriveBlsctAddress(viewKey, spendKey, account, index, hrp);
+                Assert.Equal(expected, actual);
+            }
         }
     }
 }
