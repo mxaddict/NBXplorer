@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using NBitcoin.DataEncoders;
 using NBXplorer.DerivationStrategy;
@@ -15,26 +14,9 @@ namespace NBXplorer.Tests
         static readonly byte[] TestViewKey  = Encoders.Hex.DecodeData("3da4775835415f0b77e92be41c57d0f96e484d6367755c3bc645d3f37077d0cc");
         static readonly byte[] TestSpendKey = Encoders.Hex.DecodeData("887e0f73b4b2395838b63ca6539ecfc885c8d02a97d6ef36904cbac71b07e3f5d2dc6800410fa9ece530076f577670b6");
 
-        static BlsctDerivationTests()
-        {
-            var libPath = Environment.GetEnvironmentVariable("LIBBLSCT_SO_PATH");
-            if (!string.IsNullOrEmpty(libPath))
-            {
-                var handle = NativeLibrary.Load(libPath);
-                IntPtr Resolver(string name, System.Reflection.Assembly _, DllImportSearchPath? __)
-                    => name == "blsct" ? handle : IntPtr.Zero;
-                NativeLibrary.SetDllImportResolver(typeof(NavioBlsct.blsct).Assembly, Resolver);
-                NativeLibrary.SetDllImportResolver(typeof(BlsctDerivationStrategy).Assembly, Resolver);
-            }
-        }
-
-        private static bool HasLibblsct => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LIBBLSCT_SO_PATH"));
-
         [Fact]
         public void DeriveBlsctAddressWithTnvHrpStartsWithPrefix()
         {
-            if (!HasLibblsct) return;
-
             var address = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             Assert.StartsWith("tnv1", address);
         }
@@ -48,8 +30,6 @@ namespace NBXplorer.Tests
         [Fact]
         public void DeriveBlsctAddressIsDeterministic()
         {
-            if (!HasLibblsct) return;
-
             var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             Assert.Equal(address1, address2);
@@ -58,8 +38,6 @@ namespace NBXplorer.Tests
         [Fact]
         public void DeriveBlsctAddressDifferentAccountProducesDifferentAddress()
         {
-            if (!HasLibblsct) return;
-
             var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 1, 0, "tnv");
             Assert.NotEqual(address1, address2);
@@ -68,8 +46,6 @@ namespace NBXplorer.Tests
         [Fact]
         public void DeriveBlsctAddressDifferentIndexProducesDifferentAddress()
         {
-            if (!HasLibblsct) return;
-
             var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 1, "tnv");
             Assert.NotEqual(address1, address2);
@@ -78,8 +54,6 @@ namespace NBXplorer.Tests
         [Fact]
         public void DeriveBlsctAddressChangeAccountProducesDifferentAddress()
         {
-            if (!HasLibblsct) return;
-
             var address1 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, 0, 0, "tnv");
             var address2 = BlsctDerivationStrategy.DeriveBlsctAddress(TestViewKey, TestSpendKey, BlsctDerivationStrategy.ChangeAccount, 0, "tnv");
             Assert.NotEqual(address1, address2);
@@ -94,8 +68,6 @@ namespace NBXplorer.Tests
         [Fact]
         public void DeriveBlsctAddress_MatchesFixture()
         {
-            if (!HasLibblsct) return;
-
             var fixturePath = Path.Combine(AppContext.BaseDirectory, "Data", "blsct_vectors.json");
             var doc = JsonDocument.Parse(File.ReadAllText(fixturePath));
             var viewKey  = Encoders.Hex.DecodeData(doc.RootElement.GetProperty("view_key").GetString());
