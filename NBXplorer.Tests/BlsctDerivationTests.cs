@@ -1,4 +1,6 @@
 using System;
+using System.Runtime.InteropServices;
+using NBitcoin.DataEncoders;
 using NBXplorer.DerivationStrategy;
 using Xunit;
 
@@ -6,8 +8,23 @@ namespace NBXplorer.Tests
 {
     public class BlsctDerivationTests
     {
-        static readonly byte[] TestViewKey = new byte[32];
-        static readonly byte[] TestSpendKey = new byte[48];
+        // Valid BLS12-381 keys derived from seed scalar=1 via from_seed_to_child_key chain.
+        // All-zero bytes crash deserialize_public_key; these are real valid curve points.
+        static readonly byte[] TestViewKey  = Encoders.Hex.DecodeData("3da4775835415f0b77e92be41c57d0f96e484d6367755c3bc645d3f37077d0cc");
+        static readonly byte[] TestSpendKey = Encoders.Hex.DecodeData("887e0f73b4b2395838b63ca6539ecfc885c8d02a97d6ef36904cbac71b07e3f5d2dc6800410fa9ece530076f577670b6");
+
+        static BlsctDerivationTests()
+        {
+            var libPath = Environment.GetEnvironmentVariable("LIBBLSCT_SO_PATH");
+            if (!string.IsNullOrEmpty(libPath))
+            {
+                var handle = NativeLibrary.Load(libPath);
+                IntPtr Resolver(string name, System.Reflection.Assembly _, DllImportSearchPath? __)
+                    => name == "blsct" ? handle : IntPtr.Zero;
+                NativeLibrary.SetDllImportResolver(typeof(NavioBlsct.blsct).Assembly, Resolver);
+                NativeLibrary.SetDllImportResolver(typeof(BlsctDerivationStrategy).Assembly, Resolver);
+            }
+        }
 
         private static bool HasLibblsct => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("LIBBLSCT_SO_PATH"));
 
