@@ -314,8 +314,7 @@ namespace NBXplorer.Backend
 				// Derive BLSCT addresses for indices [nextIndex, nextIndex + toGenerate)
 				for (long i = 0; i < toGenerate; i++)
 				{
-					// Use the native libblsct to derive BLSCT addresses
-					// Call gen_sub_addr_id -> derive_sub_address -> encode_address
+					// Use NavioBlsct SWIG bindings to derive BLSCT addresses
 					var addrStr = BlsctDerivationStrategy.DeriveBlsctAddress(
 						strategy.ViewKey,
 						strategy.SpendKey,
