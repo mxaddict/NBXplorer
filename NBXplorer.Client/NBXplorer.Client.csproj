@@ -14,6 +14,7 @@
 		<RepositoryType>git</RepositoryType>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<LangVersion>12</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
   <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.1' ">
     <DefineConstants>$(DefineConstants);NO_RECORD</DefineConstants>
@@ -27,8 +28,9 @@
 		  <NoWarn>$(NoWarn);1591;1573;1572;1584;1570;3021</NoWarn>
         </PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="NBitcoin" Version="10.0.9" />
-		<PackageReference Include="NBitcoin.Altcoins" Version="6.0.4" />
+		<ProjectReference Include="..\..\NBitcoin\NBitcoin\NBitcoin.csproj" />
+		<ProjectReference Include="..\..\NBitcoin\NBitcoin.Altcoins\NBitcoin.Altcoins.csproj" />
+		<PackageReference Include="NavioBlsct" Version="0.1.0" />
 	</ItemGroup>
     <ItemGroup>
         <InternalsVisibleTo Include="NBXplorer.Tests" />

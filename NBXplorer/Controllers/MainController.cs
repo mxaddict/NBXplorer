@@ -92,7 +92,17 @@ namespace NBXplorer.Controllers
 			"verifytxoutproof",
 			"getblockchaininfo",
 			"getblockhash",
-			"getblockheader"
+			"getblockheader",
+			// BLSCT wallet methods (Navio)
+			"getblsctbalance",
+			"sendtoblsctaddress",
+			"listblsctunspent",
+			"listblscttransactions",
+			"createblsctrawtransaction",
+			"fundblsctrawtransaction",
+			"signblsctrawtransaction",
+			"decodeblsctrawtransaction",
+			"createblsctbalanceproof"
 		};
 		internal NBXplorerNetwork GetNetwork(string cryptoCode, bool checkRPC)
 		{

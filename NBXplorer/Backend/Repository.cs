@@ -173,6 +173,13 @@ namespace NBXplorer.Backend
 => GenerateAddressesCore(connection, strategy, strategy.GetLineFor(KeyPathTemplates, derivationFeature), query);
 		internal async Task<int> GenerateAddressesCore(DbConnection connection, DerivationStrategyBase strategy, DerivationLine derivationLine, GenerateAddressQuery query)
 		{
+			// BLSCT path: derive addresses from (viewKey, spendKey) instead of BIP32
+			if (strategy is BlsctDerivationStrategy blsct)
+			{
+				return await GenerateBlsctAddressesCore(
+					connection, blsct, derivationLine.Feature, query);
+			}
+
 			var descriptorKey = GetDescriptorKey(strategy, derivationLine.Feature);
 			var walletKey = GetWalletKey(strategy, Network);
 			var gapNextIndex = await GetGapAndNextIdx(connection, descriptorKey);
@@ -245,8 +252,104 @@ namespace NBXplorer.Backend
 			return (int)totalGenerated;
 		}
 
+		private async Task<int> GenerateBlsctAddressesCore(
+			DbConnection connection,
+			BlsctDerivationStrategy strategy,
+			DerivationFeature feature,
+			GenerateAddressQuery query)
+		{
+			var walletKey = GetWalletKey(strategy, Network);
+			var descriptorKey = GetDescriptorKey(strategy, feature);
+			var gapNextIndex = await GetGapAndNextIdx(connection, descriptorKey);
+			long toGenerate = ToGenerateCount(query, gapNextIndex?.gap);
+			if (gapNextIndex is not null && toGenerate == 0)
+				return 0;
+
+			// Initial wallet/descriptor row creation (same as BIP32 path)
+			if (gapNextIndex is null)
+			{
+				await connection.ExecuteAsync(
+					"INSERT INTO wallets VALUES (@wid, @metadata::JSONB) ON CONFLICT DO NOTHING",
+					walletKey);
+				await connection.ExecuteAsync(
+					"INSERT INTO descriptors VALUES (@code, @descriptor, @metadata::JSONB) " +
+					"ON CONFLICT DO NOTHING; " +
+					"INSERT INTO wallets_descriptors (code, descriptor, wallet_id) " +
+					"VALUES (@code, @descriptor, @wallet_id) ON CONFLICT DO NOTHING;",
+					new
+					{
+						descriptorKey.code,
+						descriptorKey.descriptor,
+						metadata = Serializer.ToString(new LegacyDescriptorMetadata()
+						{
+							Derivation = strategy,
+							Feature = feature,
+							Type = LegacyDescriptorMetadata.TypeName
+						}),
+						wallet_id = walletKey.wid
+					});
+				gapNextIndex = await GetGapAndNextIdx(connection, descriptorKey);
+				toGenerate = ToGenerateCount(query, gapNextIndex?.gap);
+			}
+			if (gapNextIndex is null) return 0;
+
+			long totalGenerated = 0;
+
+			// Determine HRP based on network
+			var hrp = Network.NBitcoinNetwork.NetworkSet is NBitcoin.Altcoins.Navio
+				? (Network.NBitcoinNetwork == NBitcoin.Network.GetNetwork("nav-test")
+					? "tnv" : "nav")
+				: throw new InvalidOperationException("BlsctDerivationStrategy used on non-Navio network");
+
+			// Map DerivationFeature to BLSCT account index
+			long account = feature == DerivationFeature.Change
+				? BlsctDerivationStrategy.ChangeAccount   // -1
+				: 0; // receive
+
+			do
+			{
+				var nextIndex = gapNextIndex.next_idx;
+				var inserts = new DescriptorScriptInsert[toGenerate];
+
+				// Derive BLSCT addresses for indices [nextIndex, nextIndex + toGenerate)
+				for (long i = 0; i < toGenerate; i++)
+				{
+					// Use NavioBlsct SWIG bindings to derive BLSCT addresses
+					var addrStr = BlsctDerivationStrategy.DeriveBlsctAddress(
+						strategy.ViewKey,
+						strategy.SpendKey,
+						account,
+						(ulong)(nextIndex + i),
+						hrp);
+					var addr = BitcoinAddress.Create(addrStr, Network.NBitcoinNetwork);
+					inserts[i] = new DescriptorScriptInsert(
+						descriptorKey.descriptor,
+						(int)(nextIndex + i),
+						addr.ScriptPubKey.ToHex(),
+						null,  // No additional metadata
+						addr.ToString(),
+						false);
+				}
+
+				await InsertDescriptorsScripts(connection, inserts);
+				totalGenerated += toGenerate;
+				gapNextIndex = await GetGapAndNextIdx(connection, descriptorKey);
+				toGenerate = ToGenerateCount(null, gapNextIndex?.gap);
+				if (query?.MaxAddresses is int m && totalGenerated >= m)
+					toGenerate = 0;
+			} while (toGenerate > 0);
+
+			return (int)totalGenerated;
+		}
+
 		private async Task ImportDescriptorToRPCIfNeeded(DbConnection connection, WalletKey walletKey, long fromIndex, long toGenerate, KeyPathTemplate keyTemplate)
 		{
+			// BLSCT wallets don't use descriptors — the daemon derives
+			// sub-addresses from the BLSCT seed internally via blsct::KeyMan.
+			// importdescriptors would fail (WALLET_FLAG_DESCRIPTORS is cleared).
+			if (rpc.Network.NetworkSet is NBitcoin.Altcoins.Navio)
+				return;
+
 			var helper = new DbConnectionHelper(Network, connection);
 			var importAddressToRPC = ImportRPCMode.Parse(await helper.GetMetadata<string>(walletKey.wid, WellknownMetadataKeys.ImportAddressToRPC));
 			if (importAddressToRPC == ImportRPCMode.Descriptors || importAddressToRPC == ImportRPCMode.DescriptorsReadOnly)

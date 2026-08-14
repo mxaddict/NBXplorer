@@ -256,6 +256,11 @@ namespace NBXplorer
 		public static async Task EnsureWalletCreated(this RPCClient client, ILogger logger)
 		{
 			var network = client.Network.NetworkSet;
+			// Apply BLSCT RPC overrides for Navio
+			if (network is NBitcoin.Altcoins.Navio)
+			{
+				NBitcoin.Altcoins.Navio.ConfigureBLSCTOverrides(client);
+			}
 			var walletName = client.CredentialString.WalletName ?? "";
 			bool created = false;
 			retry:
@@ -264,7 +269,8 @@ namespace NBXplorer
 				await client.CreateWalletAsync(walletName, new CreateWalletOptions()
 				{
 					LoadOnStartup = true,
-					Blank = client.Network.ChainName != ChainName.Regtest
+					Blank = client.Network.ChainName != ChainName.Regtest,
+					Blsct = network is NBitcoin.Altcoins.Navio ? true : null
 				});
 				logger.LogInformation($"{network.CryptoCode}: Created RPC wallet \"{walletName}\"");
 				created = true;
